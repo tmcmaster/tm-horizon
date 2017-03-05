@@ -1,0 +1,126 @@
+<dom-module id="tm-horizon-search">
+  <template>
+    <style>
+       :host {
+        display: block;
+      }
+    </style>
+  </template>
+  <script src="js/horizon.js"></script>
+  <script>
+    (function(Polymer) {
+      Polymer({
+        is: 'tm-horizon-search',
+        properties: {
+          hostname: {
+            type: String,
+            notify: true,
+            value: location.hostname
+          },
+          port: {
+            type: String,
+            notify: true,
+            value: '8181'
+          },
+          results: {
+            type: Array,
+            notify: true
+          },
+          key: {
+            type: String,
+            notify: true,
+            value: ''
+          },
+          value: {
+            type: String,
+            notify: true,
+            value: ''
+          },
+          order: {
+            type: String,
+            notify: true,
+            value: ''
+          },
+          search: {
+            type: Object,
+            notify: true,
+            value: {}
+          },
+          keyList: {
+            type: String,
+            notify: true,
+            value: []
+          }
+        },
+        observers: [
+          'debug(results)',
+          '_connectToDatabase(hostname,port)',
+          '_doSearch(collection,order,key,value,search,keyList)'
+        ],
+        _connectToDatabase: function(hostname, port) {
+          console.log('HORIZON) Connecting to database: horizon://' + hostname + ':' + port);
+          this.horizon = Horizon({
+            host: hostname + ':' + port
+          });
+        },
+        _doSearch: function(collection, order, key, value, search, keyList) {
+          if (collection === undefined) {
+            return;
+          }
+          var orderString = buildOrderString(order);
+          var searchObject = buildSearchObject(key, value, search);
+
+          var self = this;
+          this.horizon(collection)
+            //.findAll(searchObject)
+            .order(orderString)
+            .fetch()
+            .subscribe(responseArray => {
+              self.results = maskArrayObjects(responseArray, keyList);
+            });
+        },
+        debug: function(object) {
+          console.log(object);
+        },
+        ready: function() {
+          console.log('Element tm-horizon-search has been created.');
+        }
+      });
+
+      function buildOrderString(order) {
+        return (order === undefined || order === '' ? 'id' : order);
+      }
+
+      function buildSearchObject(key, value, search) {
+        if (searchObject !== undefined && Object.keys(searchObject).length > 0) {
+          return search;
+        } else if (key !== undefined && value !== undefined && key !== '' && value != '') {
+          var searchObject = {};
+          searchObject[key] = value;
+          return searchObject
+        } else {
+          return undefined;
+        }
+      }
+
+      function maskArrayObjects(origArray, keyList) {
+        var newArray;
+        if (keyList === undefined) {
+          newArray = origArray;
+        } else {
+          newArray = [];
+          origArray.forEach(function(item) {
+            var result = {};
+            keyList.forEach(function(key) {
+              result[key] = item[key];
+            });
+            result['id'] = item['id'];
+            newArray.push(result);
+          });
+        }
+
+        return newArray;
+      }
+    })(window.Polymer);
+  </script>
+</dom-module>
